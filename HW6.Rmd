@@ -1,8 +1,10 @@
 ---
-title: "Support Vector Machines(SVMs) Tutorial"
-author: "Sonali Narang"
+title: "Support Vector Machines(SVMs) Homework 6 HW"
+author: "Allen Zhu"
 date: "11/12/2019"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -18,93 +20,158 @@ library(tidyverse)
 library(mlbench)
 library(caret)
 library(pROC)
+library(glmnet)
+library(randomForest)
+library(corrplot)
 ```
 
-## The Breast Cancer Dataset
-699 Observations, 11 variables
-Predictor Variable: Class--benign or malignant 
-
-```{r}
-data(BreastCancer)
-
-#bc = BreastCancer %>% 
-#  mutate_if(is.character, as.numeric)
-#bc[is.na(bc)] = 0
-
-BreastCancer_num = transform(BreastCancer, Id = as.numeric(Id), 
-                         Cl.thickness = as.numeric(Cl.thickness),
-                         Cell.size = as.numeric(Cell.size),
-                         Cell.shape = as.numeric(Cell.shape), 
-                         Marg.adhesion = as.numeric(Marg.adhesion),
-                         Epith.c.size = as.numeric(Epith.c.size),
-                         Bare.nuclei = as.numeric(Bare.nuclei), 
-                         Bl.cromatin = as.numeric(Bl.cromatin), 
-                         Normal.nucleoli = as.numeric(Normal.nucleoli),
-                         Mitoses = as.numeric(Mitoses))
-
-BreastCancer_num[is.na(BreastCancer_num)] = 0
-
-train_size = floor(0.75 * nrow(BreastCancer_num))
-train_pos <- sample(seq_len(nrow(BreastCancer_num)), size = train_size)
-
-train_classification <- BreastCancer_num[train_pos, ]
-test_classification <- BreastCancer_num[-train_pos, ]
-
-```
-
-##SVM 
-
-```{r}
-set.seed(1112)
-control = trainControl(method = "repeatedcv", repeats = 5, classProbs = T, savePredictions = T)
-
-svm = train(Class ~ Id + Cl.thickness + Cell.size + Cell.shape + Marg.adhesion + Epith.c.size + Bare.nuclei + Bl.cromatin + Normal.nucleoli +  Mitoses,  data = train_classification, method = "svmLinear", tuneLength = 10, trControl = control)
-
-svm
-```
-##Receiver operating characteristic(ROC) curve
-
-```{r}
-roc(predictor = svm$pred$malignant, response = svm$pred$obs)$auc
-
-plot(x = roc(predictor = svm$pred$malignant, response = svm$pred$obs)$specificities, y = roc(predictor = svm$pred$malignant, response = svm$pred$obs)$sensitivities, col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity", xlab = "Specificity")
-
-```
-## Test Set 
-
-```{r}
-svm_test = predict(svm, newdata = test_classification)
-confusionMatrix(svm_test, reference = test_classification$Class)
-```
-## SVM with a radial kernel 
-
-```{r}
-set.seed(1112)
-control = trainControl(method = "repeatedcv", repeats = 5, classProbs = T, savePredictions = T)
-
-svm = train(Class ~ Id + Cl.thickness + Cell.size + Cell.shape + Marg.adhesion + Epith.c.size + Bare.nuclei + Bl.cromatin + Normal.nucleoli +  Mitoses,  data = train_classification, method = "svmRadial", tuneLength = 10, trControl = control)
-
-svm
-```
-
-##Receiver operating characteristic(ROC) curve
-
-```{r}
-roc(predictor = svm$pred$malignant, response = svm$pred$obs)$auc
-
-plot(x = roc(predictor = svm$pred$malignant, response = svm$pred$obs)$specificities, y = roc(predictor = svm$pred$malignant, response = svm$pred$obs)$sensitivities, col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity", xlab = "Specificity")
-
-```
-
-## Test Set 
-
-```{r}
-svm_test = predict(svm, newdata = test_classification)
-confusionMatrix(svm_test, reference = test_classification$Class)
-```
 
 ##Homework
 
 1. Choose an appropriate machine learning dataset and use SVM with two different kernels. Campare the results. 
 
+
+The two different kernels performed fairly comparably to each other, the linear kernel has an accuracy of ~.78 whereas the radial kernel has an accuracy of .77 (where a C value of 2 was selected). The linear kernel slightly outperforms its radial counterpart in both the ROC AUC (.83 compared to .81), and the confusion matrix accuracy (.75 compared to .69).
+
+```{r}
+
+data(PimaIndiansDiabetes2)
+```
+```{r}
+set.seed(25)
+
+PID <- PimaIndiansDiabetes2
+
+
+PID[is.na(PID)] = 0
+
+train_size = floor(0.75 * nrow(PID))
+train_pos <- sample(seq_len(nrow(PID)), size = train_size)
+
+train_classification <- PID[train_pos, ]
+test_classification <- PID[-train_pos, ]
+
+str(PID)
+```
+
+
+```{r}
+set.seed(205)
+control = trainControl(method = "repeatedcv", repeats = 5, classProbs = T, savePredictions = T)
+
+svm = train(diabetes ~ pregnant + glucose + pressure + triceps + insulin + mass + pedigree + age,  data = train_classification, method = "svmLinear", tuneLength = 10, trControl = control)
+
+svm
+
+```
+```{r}
+roc(predictor = svm$pred$pos, response = svm$pred$obs)$auc
+
+plot(x = roc(predictor = svm$pred$pos, response = svm$pred$obs)$specificities, y = roc(predictor = svm$pred$pos, response = svm$pred$obs)$sensitivities, col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity", xlab = "Specificity")
+
+```
+
+```{r}
+svm_test = predict(svm, newdata = test_classification)
+
+confusionMatrix(svm_test, reference = test_classification$diabetes)
+```
+
+```{r}
+set.seed(205)
+control = trainControl(method = "repeatedcv", repeats = 5, classProbs = T, savePredictions = T)
+
+svm = train(diabetes ~ pregnant + glucose + pressure + triceps + insulin + mass + pedigree + age,  data = train_classification, method = "svmRadial", tuneLength = 10, trControl = control)
+
+svm
+
+```
+```{r}
+roc(predictor = svm$pred$pos, response = svm$pred$obs)$auc
+
+plot(x = roc(predictor = svm$pred$pos, response = svm$pred$obs)$specificities, y = roc(predictor = svm$pred$pos, response = svm$pred$obs)$sensitivities, col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity", xlab = "Specificity")
+
+```
+
+```{r}
+svm_test = predict(svm, newdata = test_classification)
+
+confusionMatrix(svm_test, reference = test_classification$diabetes)
+```
+
+
+
 2. Attempt using SVM after using a previously covered feature selection method. Do the results improve? Explain. 
+
+A recursive feature elimination applied to the PimaIndianDiabetes2 (PID) dataset. The method returned 5 variables (glucose, mass, age, pregnant, and pedigree) as the most important variables. Linear and radial SVM kernels were then applied on the dataset selecting only for the aforementioned variables. The results remain more or less unchanged. The linear kernel saw a .01 improvement on the the model accuracy, and a .01 decrease in the confusion matrix accuracy (.77 to .78, and .75 to .74 respectively). The radial kernel 
+performed slighly better compared to its pre-feature selection counterpart, seeing a .01 increase in model accuracy (.77 to .78), and a .05 increase in CM accuracy. It is important to note that C (i.e. the cost of miscalculation) is now lower as well (from 2 to 1). The changes between the two however are small, and the improvements could easily be removed by changing the seed number.
+
+In general, feature selection is not used before attempting SVM. This is because the formula within SVM contains an optimization factor that accounts for all of the variables contained within the dataset. By performing feature selection beforehand, and removing the 'unimportant' variables, the optimization parameter within SVM is now weighted more heavily towards the selected features, leading to overfitting, making it worse at predicting the testing set. In the instance seen below, the models didn't change much because the feature selection still selected 5 out of the 8 predictive variables, and much of the features remain, thus somewhat diluting out the effects overfitting. If a feature selection narrowed the field down to only 2 features, I would expect a larger negative effect on the model's ability to make predictions on the test set.
+
+
+```{r RFE}
+set.seed(35)
+#define the control 
+PID <- PimaIndiansDiabetes2
+PID[is.na(PID)] = 0
+control = rfeControl(functions = caretFuncs, number = 2)
+
+# run the RFE algorithm
+results = rfe(PID[,1:8], PID[,9], sizes = c(2,5,9), rfeControl = control, method = "svmRadial")
+
+results
+results$variables
+plot(results, type=c("g", "o"))
+```
+
+
+
+```{r}
+set.seed(205)
+control = trainControl(method = "repeatedcv", repeats = 5, classProbs = T, savePredictions = T)
+
+svm = train(diabetes ~ pregnant + glucose  + mass + pedigree + age,  data = train_classification, method = "svmLinear", tuneLength = 10, trControl = control)
+
+svm
+
+```
+
+
+```{r}
+roc(predictor = svm$pred$pos, response = svm$pred$obs)$auc
+
+plot(x = roc(predictor = svm$pred$pos, response = svm$pred$obs)$specificities, y = roc(predictor = svm$pred$pos, response = svm$pred$obs)$sensitivities, col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity", xlab = "Specificity")
+
+```
+
+```{r}
+svm_test = predict(svm, newdata = test_classification)
+
+confusionMatrix(svm_test, reference = test_classification$diabetes)
+```
+
+
+
+```{r}
+set.seed(205)
+control = trainControl(method = "repeatedcv", repeats = 5, classProbs = T, savePredictions = T)
+
+svm = train(diabetes ~ pregnant + glucose  + mass + pedigree + age,  data = train_classification, method = "svmRadial", tuneLength = 10, trControl = control)
+
+svm
+
+```
+
+```{r}
+roc(predictor = svm$pred$pos, response = svm$pred$obs)$auc
+
+plot(x = roc(predictor = svm$pred$pos, response = svm$pred$obs)$specificities, y = roc(predictor = svm$pred$pos, response = svm$pred$obs)$sensitivities, col= "blue", xlim = c(1, 0), type ="l", ylab = "Sensitivity", xlab = "Specificity")
+
+```
+
+```{r}
+svm_test = predict(svm, newdata = test_classification)
+
+confusionMatrix(svm_test, reference = test_classification$diabetes)
+```
+
